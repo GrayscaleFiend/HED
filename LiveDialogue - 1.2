@@ -1,0 +1,178 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using System.IO;
+using System.Text.RegularExpressions;
+using UnityEngine.UI;
+
+public class LiveDialogue : MonoBehaviour {
+
+    public GameObject canvas;
+    public Text display;
+    public float TypeSpeed;
+    AudioClip clip;
+    public string filename;
+
+    private Coroutine coroutine;
+    private bool oneclick;
+    private bool inputnoarrow;
+    private StreamReader scanner;
+    private TextAsset textfile;
+    private string line;
+    private int index;
+    private string textfilecontent;
+   // private List<string> lines;
+    private bool next = false;
+   // private GameObject LiveDialogueField;
+
+
+    // Use this for initialization
+    void Start()
+    {
+
+       // LiveDialogueField = GameObject.FindWithTag("DialogueBox");
+        // num = 0;
+        /* if (filename == "start.txt")
+          {
+              TriggerLiveText(filename);
+          }*/
+    }
+
+    void FixedUpdate()
+    {
+        inputnoarrow = Input.anyKeyDown ^ (Input.GetKeyDown("w") || Input.GetKeyDown("a") || Input.GetKeyDown("s") || Input.GetKeyDown("d")
+            || Input.GetKeyDown("up") || Input.GetKeyDown("down") || Input.GetKeyDown("left") || Input.GetKeyDown("right"));
+        if (inputnoarrow && line == display.text)
+        {
+        //    Debug.Log("Line was already finished.");
+            StopAllCoroutines();
+            index += 2;
+            oneclick = false;
+            TriggerLiveText(null);
+        }else if (oneclick && inputnoarrow)
+        {
+        //    Debug.Log("Two clicks.");
+            StopAllCoroutines();
+            index += 2;
+            TriggerLiveText(null);
+            oneclick = false;
+        }else if (inputnoarrow && line != display.text)
+        {
+           // Debug.Log("One click");
+            StopAllCoroutines();
+            display.text = line;
+            oneclick = true;
+      //      Debug.Log("Displaying: " + display.text);
+        } 
+
+
+    }
+
+
+    public void TriggerLiveText(string filename)
+    {
+        if(filename != null)
+            textfile = (TextAsset)Resources.Load("L1/" + filename, typeof(TextAsset));
+
+            textfilecontent = textfile.text;
+            var lines = (Regex.Split(textfilecontent, "\n|\r|\r\n"));
+        if (next)
+        {
+            NextLine(lines);
+        }
+        else
+        {
+
+            index = 0;
+            canvas.SetActive(true);
+            line = "";
+            //   scanner = new StreamReader("Assets/Resources/L1/" + filename);
+            coroutine = StartCoroutine(TypeAnim(lines));
+            next = true;
+          //  NextLine(lines);
+        }
+  //      for(int w = 0; w <=lines.Length;w++)
+      //    Debug.Log(lines[w]);
+
+    }
+
+    public void NextLine(string[] lines)
+    {
+        if (line != null)
+        {
+            coroutine = StartCoroutine(TypeAnim(lines));
+        }
+        else
+        {
+            Debug.Log("Line is null.");
+            display.text = "";
+        }
+    }
+
+
+    IEnumerator TypeAnim(string[] lines)
+    {
+        display.text = "";
+        line = lines[index];
+       // Debug.Log(line);
+        if (SpecialActions(lines))
+        {
+            if (line != null)
+            {
+                foreach (char letter in line.ToCharArray())
+                {
+                    display.text += letter;
+
+                    yield return new WaitForSeconds(TypeSpeed);
+                }
+            }
+           // NextLine();
+        }
+        display.text = line;
+       // index++;
+        yield return new WaitForSeconds(.1f);
+
+    }
+
+
+    public bool SpecialActions(string[] lines)        //returns false if it requires a special action. Completes special actions. 
+    {
+        if (line == "dialogueend")
+        {
+
+            //   Debug.Log("skipping end call.");
+            StopCoroutine(coroutine);
+            canvas.SetActive(false);
+            return false;
+        }
+        else if (line == "audio")
+        {
+            return false;
+        }
+        else if (line == "charfile")
+        {
+            line = lines[index + 2];
+            GameObject charslot = GameObject.FindWithTag(line + "C");
+            //change SpriteRenderer to Image, as done in InventorySlot.
+            Image character = charslot.GetComponent<Image>();
+
+            line = lines[index + 4];
+            character.sprite = Resources.Load<Sprite>("CharacterBusts/" + line + "" + (lines[index + 6]));
+            index += 8;
+            Debug.Log(lines[index]);
+
+            return false;
+        }
+        else if(line == "")
+        {
+            return false;
+        }else
+            return true;
+    }
+
+    public void clearChar()
+    {
+
+    }
+
+}
